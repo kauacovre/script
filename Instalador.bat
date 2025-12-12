@@ -1,210 +1,156 @@
-# Instalador de Programas - Star
-# Execute este script como Administrador
+@echo off
+title Instalador Star - Configuracao Automatica
+color 0A
 
-# Função para limpar a tela
-function Limpar-Tela {
-    Clear-Host
-}
+echo ========================================
+echo    INSTALADOR STAR
+echo    Configuracao Automatica de Notebooks
+echo ========================================
+echo.
+echo Verificando permissoes...
 
-# Função para perguntar Sim/Não
-function Perguntar {
-    param([string]$mensagem)
-    
-    while ($true) {
-        $resposta = Read-Host "$mensagem (s/n)"
-        $resposta = $resposta.ToLower().Trim()
-        
-        if ($resposta -in @('s', 'sim', 'y', 'yes')) {
-            return $true
-        }
-        elseif ($resposta -in @('n', 'nao', 'não', 'no')) {
-            return $false
-        }
-        else {
-            Write-Host "Resposta inválida. Use 's' para sim ou 'n' para não." -ForegroundColor Yellow
-        }
-    }
-}
+:: Verifica se esta como administrador
+net session >nul 2>&1
+if %errorLevel% neq 0 (
+    color 0C
+    echo.
+    echo ERRO: Precisa executar como Administrador!
+    echo.
+    echo Clique com botao direito neste arquivo
+    echo e escolha "Executar como administrador"
+    echo.
+    pause
+    exit
+)
 
-# Função para instalar Google Chrome
-function Instalar-GoogleChrome {
-    Write-Host "`n=== Instalando Google Chrome ===" -ForegroundColor Cyan
-    try {
-        winget install --id=Google.Chrome -e --accept-source-agreements --accept-package-agreements --silent
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "✓ Google Chrome instalado com sucesso!" -ForegroundColor Green
-            return $true
-        }
-        else {
-            Write-Host "✗ Erro ao instalar Google Chrome" -ForegroundColor Red
-            return $false
-        }
-    }
-    catch {
-        Write-Host "✗ Erro: $_" -ForegroundColor Red
-        return $false
-    }
-}
+echo [OK] Executando como Administrador
+echo.
 
-# Função para instalar AnyDesk
-function Instalar-AnyDesk {
-    Write-Host "`n=== Instalando AnyDesk ===" -ForegroundColor Cyan
-    
-    # Método 1: Tentar com o ID principal
-    Write-Host "Tentando instalação (Método 1)..." -ForegroundColor Yellow
-    try {
-        winget install --id=AnyDeskSoftwareGmbH.AnyDesk -e --accept-source-agreements --accept-package-agreements --force --silent 2>$null
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "✓ AnyDesk instalado com sucesso!" -ForegroundColor Green
-            return $true
-        }
-    }
-    catch { }
-    
-    # Método 2: Tentar com ID alternativo
-    Write-Host "Tentando instalação (Método 2)..." -ForegroundColor Yellow
-    try {
-        winget install AnyDesk.AnyDesk --accept-source-agreements --accept-package-agreements --force --silent 2>$null
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "✓ AnyDesk instalado com sucesso!" -ForegroundColor Green
-            return $true
-        }
-    }
-    catch { }
-    
-    # Método 3: Download direto
-    Write-Host "Tentando instalação (Método 3 - Download direto)..." -ForegroundColor Yellow
-    try {
-        $url = "https://download.anydesk.com/AnyDesk.exe"
-        $instalador = "$env:TEMP\AnyDesk.exe"
-        
-        Write-Host "   Baixando AnyDesk..." -ForegroundColor Gray
-        Invoke-WebRequest -Uri $url -OutFile $instalador -UseBasicParsing
-        
-        Write-Host "   Executando instalador..." -ForegroundColor Gray
-        Start-Process -FilePath $instalador -ArgumentList "--install", "--silent" -Wait -NoNewWindow
-        
-        # Remove instalador temporário
-        Remove-Item $instalador -Force -ErrorAction SilentlyContinue
-        
-        Write-Host "✓ AnyDesk instalado com sucesso!" -ForegroundColor Green
-        return $true
-    }
-    catch {
-        Write-Host "✗ Erro no método 3: $_" -ForegroundColor Red
-    }
-    
-    Write-Host "✗ Não foi possível instalar o AnyDesk automaticamente" -ForegroundColor Red
-    Write-Host "   Baixe manualmente em: https://anydesk.com/pt/downloads/windows" -ForegroundColor Yellow
-    return $false
-}
+:: Pergunta se quer instalar tudo
+echo Programas que serao instalados:
+echo  - Google Chrome
+echo  - AnyDesk
+echo  - Revo Uninstaller
+echo  - Microsoft Office
+echo.
+set /p OPCAO="Instalar todos os programas? (S/N): "
 
-# Função para instalar Revo Uninstaller
-function Instalar-RevoUninstaller {
-    Write-Host "`n=== Instalando Revo Uninstaller ===" -ForegroundColor Cyan
-    try {
-        winget install --id=RevoUninstaller.RevoUninstaller -e --accept-source-agreements --accept-package-agreements --silent
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "✓ Revo Uninstaller instalado com sucesso!" -ForegroundColor Green
-            return $true
-        }
-        else {
-            Write-Host "✗ Erro ao instalar Revo Uninstaller" -ForegroundColor Red
-            Write-Host "   Tente instalar manualmente de: https://www.revouninstaller.com/" -ForegroundColor Yellow
-            return $false
-        }
-    }
-    catch {
-        Write-Host "✗ Erro: $_" -ForegroundColor Red
-        return $false
-    }
-}
+if /i "%OPCAO%"=="S" (
+    goto INSTALAR_TUDO
+) else (
+    goto MENU
+)
 
-# Função para instalar Microsoft Office
-function Instalar-Office {
-    Write-Host "`n=== Instalando Microsoft Office ===" -ForegroundColor Cyan
-    Write-Host "Nota: É necessária uma licença válida do Microsoft 365 ou Office" -ForegroundColor Yellow
-    try {
-        winget install --id=Microsoft.Office -e --accept-source-agreements --accept-package-agreements --silent
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "✓ Microsoft Office instalado com sucesso!" -ForegroundColor Green
-            Write-Host "   Faça login com sua conta Microsoft para ativar" -ForegroundColor Cyan
-            return $true
-        }
-        else {
-            Write-Host "✗ Erro ao instalar Microsoft Office" -ForegroundColor Red
-            Write-Host "   Certifique-se de ter uma licença válida" -ForegroundColor Yellow
-            return $false
-        }
-    }
-    catch {
-        Write-Host "✗ Erro: $_" -ForegroundColor Red
-        return $false
-    }
-}
+:INSTALAR_TUDO
+echo.
+echo ========================================
+echo Instalando todos os programas...
+echo ========================================
+call :CHROME
+call :ANYDESK
+call :REVO
+call :OFFICE
+goto FIM
 
-# Função principal
-function Main {
-    Limpar-Tela
-    
-    # Verifica se está rodando como administrador
-    $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    
-    if (-not $isAdmin) {
-        Write-Host "================================================" -ForegroundColor Red
-        Write-Host "AVISO: Execute como Administrador!" -ForegroundColor Red
-        Write-Host "================================================" -ForegroundColor Red
-        Write-Host "Clique com botão direito no PowerShell e escolha 'Executar como administrador'" -ForegroundColor Yellow
-        Write-Host ""
-        Read-Host "Pressione ENTER para continuar mesmo assim"
-        Limpar-Tela
-    }
-    
-    Write-Host "==================================================" -ForegroundColor Cyan
-    Write-Host "       INSTALADOR DE PROGRAMAS - STAR" -ForegroundColor White
-    Write-Host "==================================================" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Programas disponíveis:" -ForegroundColor White
-    Write-Host "1. Google Chrome" -ForegroundColor Gray
-    Write-Host "2. AnyDesk" -ForegroundColor Gray
-    Write-Host "3. Revo Uninstaller" -ForegroundColor Gray
-    Write-Host "4. Microsoft Office" -ForegroundColor Gray
-    Write-Host ""
-    
-    # Pergunta se quer instalar todos
-    $instalarTodos = Perguntar "Deseja instalar TODOS os programas?"
-    
-    $programas = @{
-        'Google Chrome' = ${function:Instalar-GoogleChrome}
-        'AnyDesk' = ${function:Instalar-AnyDesk}
-        'Revo Uninstaller' = ${function:Instalar-RevoUninstaller}
-        'Microsoft Office' = ${function:Instalar-Office}
-    }
-    
-    if ($instalarTodos) {
-        Write-Host "`n>>> Instalando todos os programas...`n" -ForegroundColor Green
-        foreach ($programa in $programas.Keys) {
-            & $programas[$programa]
-        }
-    }
-    else {
-        # Pergunta individualmente
-        foreach ($programa in $programas.Keys) {
-            if (Perguntar "`nDeseja instalar $programa?") {
-                & $programas[$programa]
-            }
-            else {
-                Write-Host "⊘ $programa - Instalação pulada" -ForegroundColor Yellow
-            }
-        }
-    }
-    
-    Write-Host "`n==================================================" -ForegroundColor Cyan
-    Write-Host "           INSTALAÇÃO CONCLUÍDA!" -ForegroundColor Green
-    Write-Host "==================================================" -ForegroundColor Cyan
-    Write-Host ""
-    Read-Host "Pressione ENTER para sair"
-}
+:MENU
+echo.
+set /p CHROME="Instalar Google Chrome? (S/N): "
+if /i "%CHROME%"=="S" call :CHROME
 
-# Executa o script
-Main
+set /p ANYDESK="Instalar AnyDesk? (S/N): "
+if /i "%ANYDESK%"=="S" call :ANYDESK
+
+set /p REVO="Instalar Revo Uninstaller? (S/N): "
+if /i "%REVO%"=="S" call :REVO
+
+set /p OFFICE="Instalar Microsoft Office? (S/N): "
+if /i "%OFFICE%"=="S" call :OFFICE
+goto FIM
+
+:CHROME
+echo.
+echo [1/4] Instalando Google Chrome...
+winget install -e --id Google.Chrome --silent --accept-source-agreements --accept-package-agreements
+if %errorLevel%==0 (
+    echo [OK] Chrome instalado!
+) else (
+    echo [AVISO] Erro ao instalar Chrome
+)
+goto :EOF
+
+:ANYDESK
+echo.
+echo [2/4] Instalando AnyDesk...
+winget install -e --id AnyDeskSoftwareGmbH.AnyDesk --silent --accept-source-agreements --accept-package-agreements
+if %errorLevel%==0 (
+    echo [OK] AnyDesk instalado!
+) else (
+    echo [AVISO] Tentando metodo alternativo...
+    powershell -Command "& {Invoke-WebRequest -Uri 'https://download.anydesk.com/AnyDesk.exe' -OutFile '$env:TEMP\AnyDesk.exe'; Start-Process -FilePath '$env:TEMP\AnyDesk.exe' -ArgumentList '--install','--silent' -Wait; Remove-Item '$env:TEMP\AnyDesk.exe' -Force}"
+    echo [OK] AnyDesk instalado!
+)
+goto :EOF
+
+:REVO
+echo.
+echo [3/4] Instalando Revo Uninstaller...
+winget install -e --id RevoUninstaller.RevoUninstaller --silent --accept-source-agreements --accept-package-agreements
+if %errorLevel%==0 (
+    echo [OK] Revo Uninstaller instalado!
+) else (
+    echo [AVISO] Erro ao instalar Revo Uninstaller
+)
+goto :EOF
+
+:OFFICE
+echo.
+echo [4/4] Instalando Microsoft Office...
+echo (Isso pode demorar varios minutos)
+winget install -e --id Microsoft.Office --silent --accept-source-agreements --accept-package-agreements
+if %errorLevel%==0 (
+    echo [OK] Office instalado!
+    echo.
+    echo IMPORTANTE: Abra o Word ou Excel e faca login
+    echo com sua conta Microsoft para ativar o Office
+) else (
+    echo [AVISO] Erro ao instalar Office
+)
+goto :EOF
+
+:FIM
+echo.
+echo ========================================
+echo     INSTALACAO CONCLUIDA!
+echo ========================================
+echo.
+echo Todos os programas foram instalados.
+echo.
+
+:: Pergunta se deseja ativar
+set /p ATIVAR="Deseja ativar o Windows/Office? (S/N): "
+
+if /i "%ATIVAR%"=="S" (
+    echo.
+    echo ========================================
+    echo     ATIVANDO WINDOWS/OFFICE
+    echo ========================================
+    echo.
+    echo Iniciando ferramenta de ativacao...
+    echo.
+    
+    :: Executa diretamente o comando de ativacao
+    powershell -ExecutionPolicy Bypass -Command "irm https://get.activated.win | iex"
+    
+    echo.
+    echo Ativacao concluida!
+    echo.
+) else (
+    echo.
+    echo Ativacao ignorada.
+    echo.
+)
+
+echo Voce pode fechar esta janela.
+echo.
+pause
+exit
