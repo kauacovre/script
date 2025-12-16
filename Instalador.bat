@@ -31,7 +31,6 @@ echo Programas que serao instalados:
 echo  - Google Chrome
 echo  - AnyDesk
 echo  - Revo Uninstaller
-echo  - Microsoft Office
 echo.
 set /p OPCAO="Instalar todos os programas? (S/N): "
 
@@ -49,7 +48,6 @@ echo ========================================
 call :CHROME
 call :ANYDESK
 call :REVO
-call :OFFICE
 goto FIM
 
 :MENU
@@ -62,14 +60,11 @@ if /i "%ANYDESK%"=="S" call :ANYDESK
 
 set /p REVO="Instalar Revo Uninstaller? (S/N): "
 if /i "%REVO%"=="S" call :REVO
-
-set /p OFFICE="Instalar Microsoft Office? (S/N): "
-if /i "%OFFICE%"=="S" call :OFFICE
 goto FIM
 
 :CHROME
 echo.
-echo [1/4] Instalando Google Chrome...
+echo [1/3] Instalando Google Chrome...
 winget install -e --id Google.Chrome --silent --accept-source-agreements --accept-package-agreements
 if %errorLevel%==0 (
     echo [OK] Chrome instalado!
@@ -80,63 +75,35 @@ goto :EOF
 
 :ANYDESK
 echo.
-echo [2/4] Instalando AnyDesk...
-echo Tentando metodo 1 (Winget)...
-winget install -e --id AnyDeskSoftwareGmbH.AnyDesk --silent --accept-source-agreements --accept-package-agreements --force 2>nul
-if %errorLevel%==0 (
-    echo [OK] AnyDesk instalado via Winget!
-    goto :EOF
-)
+echo [2/3] Instalando AnyDesk...
+echo Baixando instalador do AnyDesk...
 
-echo Metodo 1 falhou. Tentando metodo 2 (Download direto)...
-powershell -ExecutionPolicy Bypass -Command "try { $url = 'https://download.anydesk.com/AnyDesk.exe'; $output = Join-Path $env:TEMP 'AnyDesk_Setup.exe'; Write-Host 'Baixando AnyDesk...'; (New-Object System.Net.WebClient).DownloadFile($url, $output); Write-Host 'Instalando...'; Start-Process -FilePath $output -ArgumentList '--install', '--silent' -Wait -NoNewWindow; Start-Sleep -Seconds 3; Remove-Item $output -Force -ErrorAction SilentlyContinue; Write-Host '[OK] AnyDesk instalado!' } catch { Write-Host '[ERRO] Falha:' $_.Exception.Message; exit 1 }"
-if %errorLevel%==0 (
-    echo [OK] AnyDesk instalado com sucesso!
+:: Usa pasta Windows Temp em vez de user temp para evitar problemas com caracteres especiais
+set "ANYDESK_TEMP=%SystemRoot%\Temp\AnyDesk_Setup.exe"
+
+:: Baixa o AnyDesk direto do site oficial
+powershell -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = 'SilentlyContinue'; try { Invoke-WebRequest -Uri 'https://download.anydesk.com/AnyDesk.exe' -OutFile '%ANYDESK_TEMP%' -UseBasicParsing; exit 0 } catch { exit 1 }"
+
+if exist "%ANYDESK_TEMP%" (
+    echo Instalando AnyDesk...
+    start /wait "" "%ANYDESK_TEMP%" --install --silent --create-shortcuts --start-with-win
+    timeout /t 3 /nobreak >nul
+    echo [OK] AnyDesk instalado!
+    del "%ANYDESK_TEMP%" /f /q 2>nul
 ) else (
-    echo [AVISO] Nao foi possivel instalar o AnyDesk automaticamente
-    echo Baixe manualmente em: https://anydesk.com/pt/downloads/windows
+    echo [ERRO] Falha ao baixar AnyDesk
+    echo Baixe manualmente: https://anydesk.com/pt/downloads/windows
 )
 goto :EOF
 
 :REVO
 echo.
-echo [3/4] Instalando Revo Uninstaller...
+echo [3/3] Instalando Revo Uninstaller...
 winget install -e --id RevoUninstaller.RevoUninstaller --silent --accept-source-agreements --accept-package-agreements
 if %errorLevel%==0 (
     echo [OK] Revo Uninstaller instalado!
 ) else (
     echo [AVISO] Erro ao instalar Revo Uninstaller
-)
-goto :EOF
-
-:OFFICE
-echo.
-echo [4/4] Instalando Microsoft Office...
-echo (Isso pode demorar varios minutos - aguarde...)
-echo.
-
-:: Tenta instalar o Office com timeout maior
-winget install -e --id Microsoft.Office --accept-source-agreements --accept-package-agreements --silent --force 2>nul
-
-:: Aguarda um pouco para verificar instalacao
-timeout /t 3 /nobreak >nul
-
-:: Verifica se o Office foi instalado checando processos ou pastas comuns
-powershell -Command "if (Test-Path 'C:\Program Files\Microsoft Office') { exit 0 } else { exit 1 }" >nul 2>&1
-if %errorLevel%==0 (
-    echo [OK] Office instalado com sucesso!
-    echo.
-    echo IMPORTANTE: Abra o Word ou Excel e faca login
-    echo com sua conta Microsoft para ativar o Office
-) else (
-    echo.
-    echo [AVISO] A instalacao do Office pode estar em andamento
-    echo ou precisa ser ativada manualmente.
-    echo.
-    echo Opcoes:
-    echo 1. Aguarde alguns minutos e verifique o Menu Iniciar
-    echo 2. Ou instale manualmente de: https://www.office.com/
-    echo 3. Ou use a opcao de ativacao ao final deste script
 )
 goto :EOF
 
