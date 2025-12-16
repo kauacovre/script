@@ -81,13 +81,20 @@ goto :EOF
 :ANYDESK
 echo.
 echo [2/4] Instalando AnyDesk...
-winget install -e --id AnyDeskSoftwareGmbH.AnyDesk --silent --accept-source-agreements --accept-package-agreements
+echo Tentando metodo 1 (Winget)...
+winget install -e --id AnyDeskSoftwareGmbH.AnyDesk --silent --accept-source-agreements --accept-package-agreements --force 2>nul
 if %errorLevel%==0 (
-    echo [OK] AnyDesk instalado!
+    echo [OK] AnyDesk instalado via Winget!
+    goto :EOF
+)
+
+echo Metodo 1 falhou. Tentando metodo 2 (Download direto)...
+powershell -ExecutionPolicy Bypass -Command "try { $url = 'https://download.anydesk.com/AnyDesk.exe'; $output = Join-Path $env:TEMP 'AnyDesk_Setup.exe'; Write-Host 'Baixando AnyDesk...'; (New-Object System.Net.WebClient).DownloadFile($url, $output); Write-Host 'Instalando...'; Start-Process -FilePath $output -ArgumentList '--install', '--silent' -Wait -NoNewWindow; Start-Sleep -Seconds 3; Remove-Item $output -Force -ErrorAction SilentlyContinue; Write-Host '[OK] AnyDesk instalado!' } catch { Write-Host '[ERRO] Falha:' $_.Exception.Message; exit 1 }"
+if %errorLevel%==0 (
+    echo [OK] AnyDesk instalado com sucesso!
 ) else (
-    echo [AVISO] Tentando metodo alternativo...
-    powershell -Command "& {Invoke-WebRequest -Uri 'https://download.anydesk.com/AnyDesk.exe' -OutFile '$env:TEMP\AnyDesk.exe'; Start-Process -FilePath '$env:TEMP\AnyDesk.exe' -ArgumentList '--install','--silent' -Wait; Remove-Item '$env:TEMP\AnyDesk.exe' -Force}"
-    echo [OK] AnyDesk instalado!
+    echo [AVISO] Nao foi possivel instalar o AnyDesk automaticamente
+    echo Baixe manualmente em: https://anydesk.com/pt/downloads/windows
 )
 goto :EOF
 
@@ -105,15 +112,31 @@ goto :EOF
 :OFFICE
 echo.
 echo [4/4] Instalando Microsoft Office...
-echo (Isso pode demorar varios minutos)
-winget install -e --id Microsoft.Office --silent --accept-source-agreements --accept-package-agreements
+echo (Isso pode demorar varios minutos - aguarde...)
+echo.
+
+:: Tenta instalar o Office com timeout maior
+winget install -e --id Microsoft.Office --accept-source-agreements --accept-package-agreements --silent --force 2>nul
+
+:: Aguarda um pouco para verificar instalacao
+timeout /t 3 /nobreak >nul
+
+:: Verifica se o Office foi instalado checando processos ou pastas comuns
+powershell -Command "if (Test-Path 'C:\Program Files\Microsoft Office') { exit 0 } else { exit 1 }" >nul 2>&1
 if %errorLevel%==0 (
-    echo [OK] Office instalado!
+    echo [OK] Office instalado com sucesso!
     echo.
     echo IMPORTANTE: Abra o Word ou Excel e faca login
     echo com sua conta Microsoft para ativar o Office
 ) else (
-    echo [AVISO] Erro ao instalar Office
+    echo.
+    echo [AVISO] A instalacao do Office pode estar em andamento
+    echo ou precisa ser ativada manualmente.
+    echo.
+    echo Opcoes:
+    echo 1. Aguarde alguns minutos e verifique o Menu Iniciar
+    echo 2. Ou instale manualmente de: https://www.office.com/
+    echo 3. Ou use a opcao de ativacao ao final deste script
 )
 goto :EOF
 
